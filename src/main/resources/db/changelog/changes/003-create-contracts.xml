@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="003-create-contracts" author="atlasrh">
+        <createTable tableName="contracts">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="start_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="end_date" type="DATE"/>
+            <column name="gross_salary" type="DECIMAL(12,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="employee_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_contracts_employee" references="employees(id)"/>
+            </column>
+        </createTable>
+
+        <!-- Check constraint: contract type must be one of CDI, CDD, STAGE -->
+        <sql>
+            ALTER TABLE contracts ADD CONSTRAINT chk_contract_type CHECK (type IN ('CDI', 'CDD', 'STAGE'));
+        </sql>
+
+        <!-- Check constraint: gross_salary must be positive -->
+        <sql>
+            ALTER TABLE contracts ADD CONSTRAINT chk_gross_salary_positive CHECK (gross_salary > 0);
+        </sql>
+
+        <!-- Check constraint: end_date must be >= start_date when present -->
+        <sql>
+            ALTER TABLE contracts ADD CONSTRAINT chk_end_date_after_start CHECK (end_date IS NULL OR end_date >= start_date);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
