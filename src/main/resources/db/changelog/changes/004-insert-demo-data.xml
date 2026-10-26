@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="004-insert-demo-data" author="atlasrh" context="!test">
+        <!-- Départements -->
+        <insert tableName="departments">
+            <column name="id" valueNumeric="1"/>
+            <column name="name" value="Ressources Humaines"/>
+            <column name="description" value="Gestion du personnel et des talents"/>
+        </insert>
+        <insert tableName="departments">
+            <column name="id" valueNumeric="2"/>
+            <column name="name" value="Développement"/>
+            <column name="description" value="Équipe de développement logiciel"/>
+        </insert>
+        <insert tableName="departments">
+            <column name="id" valueNumeric="3"/>
+            <column name="name" value="Marketing"/>
+            <column name="description" value="Stratégie marketing et communication"/>
+        </insert>
+        <insert tableName="departments">
+            <column name="id" valueNumeric="4"/>
+            <column name="name" value="Finance"/>
+            <column name="description" value="Comptabilité et gestion financière"/>
+        </insert>
+        <insert tableName="departments">
+            <column name="id" valueNumeric="5"/>
+            <column name="name" value="Direction Générale"/>
+            <column name="description" value="Direction et pilotage stratégique"/>
+        </insert>
+
+        <!-- Employés - Managers d'abord (sans manager_id) -->
+        <insert tableName="employees">
+            <column name="id" valueNumeric="1"/>
+            <column name="matricule" value="ATL-001"/>
+            <column name="first_name" value="Karim"/>
+            <column name="last_name" value="Bennani"/>
+            <column name="email" value="karim.bennani@atlasrh.ma"/>
+            <column name="position" value="Directeur RH"/>
+            <column name="hire_date" valueDate="2020-01-15"/>
+            <column name="department_id" valueNumeric="1"/>
+        </insert>
+        <insert tableName="employees">
+            <column name="id" valueNumeric="2"/>
+            <column name="matricule" value="ATL-002"/>
+            <column name="first_name" value="Fatima"/>
+            <column name="last_name" value="El Amrani"/>
+            <column name="email" value="fatima.elamrani@atlasrh.ma"/>
+            <column name="position" value="Lead Développeur"/>
+            <column name="hire_date" valueDate="2019-06-01"/>
+            <column name="department_id" valueNumeric="2"/>
+        </insert>
+        <insert tableName="employees">
+            <column name="id" valueNumeric="3"/>
+            <column name="matricule" value="ATL-003"/>
+            <column name="first_name" value="Youssef"/>
+            <column name="last_name" value="Tazi"/>
+            <column name="email" value="youssef.tazi@atlasrh.ma"/>
+            <column name="position" value="Directeur Marketing"/>
+            <column name="hire_date" valueDate="2018-03-10"/>
+            <column name="department_id" valueNumeric="3"/>
+        </insert>
+
+        <!-- Employés subordonnés -->
+        <insert tableName="employees">
+            <column name="id" valueNumeric="4"/>
+            <column name="matricule" value="ATL-004"/>
+            <column name="first_name" value="Salma"/>
+            <column name="last_name" value="Idrissi"/>
+            <column name="email" value="salma.idrissi@atlasrh.ma"/>
+            <column name="position" value="Chargée de recrutement"/>
+            <column name="hire_date" valueDate="2021-09-01"/>
+            <column name="department_id" valueNumeric="1"/>
+            <column name="manager_id" valueNumeric="1"/>
+        </insert>
+        <insert tableName="employees">
+            <column name="id" valueNumeric="5"/>
+            <column name="matricule" value="ATL-005"/>
+            <column name="first_name" value="Mehdi"/>
+            <column name="last_name" value="Alaoui"/>
+            <column name="email" value="mehdi.alaoui@atlasrh.ma"/>
+            <column name="position" value="Développeur Full Stack"/>
+            <column name="hire_date" valueDate="2022-01-10"/>
+            <column name="department_id" valueNumeric="2"/>
+            <column name="manager_id" valueNumeric="2"/>
+        </insert>
+        <insert tableName="employees">
+            <column name="id" valueNumeric="6"/>
+            <column name="matricule" value="ATL-006"/>
+            <column name="first_name" value="Nadia"/>
+            <column name="last_name" value="Berrada"/>
+            <column name="email" value="nadia.berrada@atlasrh.ma"/>
+            <column name="position" value="Développeuse Backend"/>
+            <column name="hire_date" valueDate="2022-04-15"/>
+            <column name="department_id" valueNumeric="2"/>
+            <column name="manager_id" valueNumeric="2"/>
+        </insert>
+        <insert tableName="employees">
+            <column name="id" valueNumeric="7"/>
+            <column name="matricule" value="ATL-007"/>
+            <column name="first_name" value="Omar"/>
+            <column name="last_name" value="Fassi"/>
+            <column name="email" value="omar.fassi@atlasrh.ma"/>
+            <column name="position" value="Chargé de communication"/>
+            <column name="hire_date" valueDate="2023-02-01"/>
+            <column name="department_id" valueNumeric="3"/>
+            <column name="manager_id" valueNumeric="3"/>
+        </insert>
+
+        <!-- Contrats -->
+        <insert tableName="contracts">
+            <column name="id" valueNumeric="1"/>
+            <column name="type" value="CDI"/>
+            <column name="start_date" valueDate="2020-01-15"/>
+            <column name="gross_salary" valueNumeric="18000.00"/>
+            <column name="employee_id" valueNumeric="1"/>
+        </insert>
+        <insert tableName="contracts">
+            <column name="id" valueNumeric="2"/>
+            <column name="type" value="CDI"/>
+            <column name="start_date" valueDate="2019-06-01"/>
+            <column name="gross_salary" valueNumeric="22000.00"/>
+            <column name="employee_id" valueNumeric="2"/>
+        </insert>
+        <insert tableName="contracts">
+            <column name="id" valueNumeric="3"/>
+            <column name="type" value="CDI"/>
+            <column name="start_date" valueDate="2018-03-10"/>
+            <column name="gross_salary" valueNumeric="20000.00"/>
+            <column name="employee_id" valueNumeric="3"/>
+        </insert>
+        <insert tableName="contracts">
+            <column name="id" valueNumeric="4"/>
+            <column name="type" value="CDD"/>
+            <column name="start_date" valueDate="2021-09-01"/>
+            <column name="end_date" valueDate="2023-08-31"/>
+            <column name="gross_salary" valueNumeric="10000.00"/>
+            <column name="employee_id" valueNumeric="4"/>
+        </insert>
+        <insert tableName="contracts">
+            <column name="id" valueNumeric="5"/>
+            <column name="type" value="CDI"/>
+            <column name="start_date" valueDate="2023-09-01"/>
+            <column name="gross_salary" valueNumeric="12000.00"/>
+            <column name="employee_id" valueNumeric="4"/>
+        </insert>
+        <insert tableName="contracts">
+            <column name="id" valueNumeric="6"/>
+            <column name="type" value="CDI"/>
+            <column name="start_date" valueDate="2022-01-10"/>
+            <column name="gross_salary" valueNumeric="15000.00"/>
+            <column name="employee_id" valueNumeric="5"/>
+        </insert>
+        <insert tableName="contracts">
+            <column name="id" valueNumeric="7"/>
+            <column name="type" value="CDD"/>
+            <column name="start_date" valueDate="2022-04-15"/>
+            <column name="end_date" valueDate="2024-04-14"/>
+            <column name="gross_salary" valueNumeric="14000.00"/>
+            <column name="employee_id" valueNumeric="6"/>
+        </insert>
+        <insert tableName="contracts">
+            <column name="id" valueNumeric="8"/>
+            <column name="type" value="STAGE"/>
+            <column name="start_date" valueDate="2023-02-01"/>
+            <column name="end_date" valueDate="2023-07-31"/>
+            <column name="gross_salary" valueNumeric="4000.00"/>
+            <column name="employee_id" valueNumeric="7"/>
+        </insert>
+        <insert tableName="contracts">
+            <column name="id" valueNumeric="9"/>
+            <column name="type" value="CDD"/>
+            <column name="start_date" valueDate="2023-08-01"/>
+            <column name="end_date" valueDate="2025-07-31"/>
+            <column name="gross_salary" valueNumeric="9000.00"/>
+            <column name="employee_id" valueNumeric="7"/>
+        </insert>
+
+        <!-- Reset sequences -->
+        <sql>SELECT setval('departments_id_seq', (SELECT MAX(id) FROM departments));</sql>
+        <sql>SELECT setval('employees_id_seq', (SELECT MAX(id) FROM employees));</sql>
+        <sql>SELECT setval('contracts_id_seq', (SELECT MAX(id) FROM contracts));</sql>
+    </changeSet>
+
+</databaseChangeLog>
