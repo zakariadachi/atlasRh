@@ -30,8 +30,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
      * Les paramètres null sont ignorés grâce aux conditions OR IS NULL.
      */
     @Query("SELECT e FROM Employee e WHERE " +
-           "(:name IS NULL OR LOWER(e.firstName) LIKE LOWER(CONCAT('%', :name, '%')) " +
-           "OR LOWER(e.lastName) LIKE LOWER(CONCAT('%', :name, '%'))) " +
+           "(:name IS NULL OR LOWER(e.firstName) LIKE LOWER(CONCAT('%', CAST(:name AS string), '%')) " +
+           "OR LOWER(e.lastName) LIKE LOWER(CONCAT('%', CAST(:name AS string), '%'))) " +
            "AND (:departmentId IS NULL OR e.department.id = :departmentId)")
     Page<Employee> search(@Param("name") String name,
                           @Param("departmentId") Long departmentId,

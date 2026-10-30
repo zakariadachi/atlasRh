@@ -59,4 +59,21 @@ class BusinessDayCalculatorTest {
         assertThatThrownBy(() -> BusinessDayCalculator.calculateBusinessDays(start, end))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    @DisplayName("Répartition des jours ouvrés à cheval sur deux années : 29/12/2025 au 05/01/2026")
+    void calculateBusinessDaysForYear_spanningTwoYears_shouldSplitCorrectly() {
+        // Lundi 29/12/2025 au Lundi 05/01/2026 (6 jours ouvrés au total : 3 en 2025, 3 en 2026)
+        LocalDate start = LocalDate.of(2025, 12, 29);
+        LocalDate end = LocalDate.of(2026, 1, 5);
+
+        int days2025 = BusinessDayCalculator.calculateBusinessDaysForYear(start, end, 2025);
+        int days2026 = BusinessDayCalculator.calculateBusinessDaysForYear(start, end, 2026);
+        int days2027 = BusinessDayCalculator.calculateBusinessDaysForYear(start, end, 2027);
+
+        assertThat(days2025).isEqualTo(3); // 29 (Lun), 30 (Mar), 31 (Mer)
+        assertThat(days2026).isEqualTo(3); // 01 (Jeu), 02 (Ven), 05 (Lun)
+        assertThat(days2027).isEqualTo(0);
+        assertThat(days2025 + days2026).isEqualTo(BusinessDayCalculator.calculateBusinessDays(start, end));
+    }
 }

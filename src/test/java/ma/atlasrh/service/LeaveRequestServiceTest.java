@@ -289,4 +289,48 @@ class LeaveRequestServiceTest {
 
         assertThat(list).hasSize(1);
     }
+
+    @Test
+    @DisplayName("Création d'une demande à cheval sur deux années avec soldes suffisants pour chaque année")
+    void create_spanningTwoYears_bothYearsHaveSufficientBalance_shouldSucceed() {
+        createDTO.setStartDate(LocalDate.of(2025, 12, 29));
+        createDTO.setEndDate(LocalDate.of(2026, 1, 5));
+
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(leaveTypeRepository.findById(1L)).thenReturn(Optional.of(leaveType));
+        when(leaveRequestRepository.hasOverlappingLeave(eq(5L), any(), any())).thenReturn(false);
+        // 3 jours nécessaires en 2025 (dispo: 5), 3 jours nécessaires en 2026 (dispo: 10)
+        when(leaveBalanceService.getRemainingBalance(5L, 1L, 2025)).thenReturn(5);
+        when(leaveBalanceService.getRemainingBalance(5L, 1L, 2026)).thenReturn(10);
+        when(leaveRequestRepository.save(any(LeaveRequest.class))).thenReturn(leaveRequest);
+        when(leaveRequestMapper.toResponseDTO(any(LeaveRequest.class))).thenReturn(responseDTO);
+
+        LeaveRequestResponseDTO result = leaveRequestService.create(5L, createDTO);
+
+        assertThat(result).isNotNull();
+        verify(leaveBalanceService).getRemainingBalance(5L, 1L, 2025);
+        verify(leaveBalanceService).getRemainingBalance(5L, 1L, 2026);
+        verify(leaveRequestRepository).save(any(LeaveRequest.class));
+    }
+
+    @Test
+    @DisplayName("Création d'une demande à cheval sur deux années rejetée si solde insuffisant la 2ème année")
+    void create_spanningTwoYears_insufficientBalanceInSecondYear_shouldThrow() {
+        createDTO.setStartDate(LocalDate.of(2025, 12, 29));
+        createDTO.setEndDate(LocalDate.of(2026, 1, 5));
+
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(leaveTypeRepository.findById(1L)).thenReturn(Optional.of(leaveType));
+        when(leaveRequestRepository.hasOverlappingLeave(eq(5L), any(), any())).thenReturn(false);
+        // 3 jours nécessaires en 2025 (dispo: 5 -> OK), 3 jours nécessaires en 2026 (dispo: 1 -> insuffisant)
+        when(leaveBalanceService.getRemainingBalance(5L, 1L, 2025)).thenReturn(5);
+        when(leaveBalanceService.getRemainingBalance(5L, 1L, 2026)).thenReturn(1);
+
+        assertThatThrownBy(() -> leaveRequestService.create(5L, createDTO))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("Solde insuffisant")
+                .hasMessageContaining("2026");
+
+        verify(leaveRequestRepository, never()).save(any());
+    }
 }

@@ -12,6 +12,7 @@ import ma.atlasrh.mapper.EmployeeMapper;
 import ma.atlasrh.repository.ContractRepository;
 import ma.atlasrh.repository.DepartmentRepository;
 import ma.atlasrh.repository.EmployeeRepository;
+import ma.atlasrh.repository.LeaveRequestRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ class EmployeeServiceTest {
 
     @Mock
     private ContractRepository contractRepository;
+
+    @Mock
+    private LeaveRequestRepository leaveRequestRepository;
 
     @Mock
     private EmployeeMapper employeeMapper;
@@ -191,6 +195,7 @@ class EmployeeServiceTest {
         when(employeeRepository.findById(10L)).thenReturn(Optional.of(employee));
         when(contractRepository.existsByEmployeeId(10L)).thenReturn(false);
         when(employeeRepository.existsByManagerId(10L)).thenReturn(false);
+        when(leaveRequestRepository.existsByEmployeeId(10L)).thenReturn(false);
 
         employeeService.delete(10L);
 
@@ -231,6 +236,21 @@ class EmployeeServiceTest {
         assertThatThrownBy(() -> employeeService.delete(10L))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("manager");
+
+        verify(employeeRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Supprimer un employé ayant des demandes de congé doit lever ConflictException")
+    void delete_withLeaveRequests_shouldThrowConflict() {
+        when(employeeRepository.findById(10L)).thenReturn(Optional.of(employee));
+        when(contractRepository.existsByEmployeeId(10L)).thenReturn(false);
+        when(employeeRepository.existsByManagerId(10L)).thenReturn(false);
+        when(leaveRequestRepository.existsByEmployeeId(10L)).thenReturn(true);
+
+        assertThatThrownBy(() -> employeeService.delete(10L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("demandes de congé");
 
         verify(employeeRepository, never()).delete(any());
     }

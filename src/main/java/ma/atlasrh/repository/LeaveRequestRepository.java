@@ -31,6 +31,22 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
                                 @Param("newStart") LocalDate newStart,
                                 @Param("newEnd") LocalDate newEnd);
 
+    boolean existsByEmployeeId(Long employeeId);
+
+    /**
+     * Recherche toutes les demandes APPROUVEE d'un employé pour un type donné chevauchant une année.
+     */
+    @Query("SELECT lr FROM LeaveRequest lr " +
+           "WHERE lr.employee.id = :employeeId " +
+           "AND lr.leaveType.id = :leaveTypeId " +
+           "AND lr.status = ma.atlasrh.entity.LeaveStatus.APPROUVEE " +
+           "AND lr.startDate <= :yearEnd " +
+           "AND lr.endDate >= :yearStart")
+    List<LeaveRequest> findApprovedLeavesInYearRange(@Param("employeeId") Long employeeId,
+                                                    @Param("leaveTypeId") Long leaveTypeId,
+                                                    @Param("yearStart") LocalDate yearStart,
+                                                    @Param("yearEnd") LocalDate yearEnd);
+
     /**
      * Calcule le total des jours ouvrés des demandes APPROUVEE pour un employé, un type et une année donnés.
      */

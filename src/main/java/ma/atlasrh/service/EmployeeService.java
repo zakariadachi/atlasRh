@@ -13,6 +13,7 @@ import ma.atlasrh.mapper.EmployeeMapper;
 import ma.atlasrh.repository.ContractRepository;
 import ma.atlasrh.repository.DepartmentRepository;
 import ma.atlasrh.repository.EmployeeRepository;
+import ma.atlasrh.repository.LeaveRequestRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -32,15 +33,18 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
     private final ContractRepository contractRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
     private final EmployeeMapper employeeMapper;
 
     public EmployeeService(EmployeeRepository employeeRepository,
                            DepartmentRepository departmentRepository,
                            ContractRepository contractRepository,
+                           LeaveRequestRepository leaveRequestRepository,
                            EmployeeMapper employeeMapper) {
         this.employeeRepository = employeeRepository;
         this.departmentRepository = departmentRepository;
         this.contractRepository = contractRepository;
+        this.leaveRequestRepository = leaveRequestRepository;
         this.employeeMapper = employeeMapper;
     }
 
@@ -193,6 +197,13 @@ public class EmployeeService {
             throw new ConflictException(
                     "Impossible de supprimer l'employé '" + employee.getFirstName() + " " + employee.getLastName()
                             + "' car il est le manager d'autres collaborateurs");
+        }
+
+        // Règle d'intégrité : impossible de supprimer si l'employé possède des demandes de congé
+        if (leaveRequestRepository.existsByEmployeeId(id)) {
+            throw new ConflictException(
+                    "Impossible de supprimer l'employé '" + employee.getFirstName() + " " + employee.getLastName()
+                            + "' car il possède des demandes de congé enregistrées");
         }
 
         employeeRepository.delete(employee);

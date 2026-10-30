@@ -98,7 +98,7 @@ classDiagram
 - Le nom du département est unique. Un département contenant des collaborateurs ne peut pas être supprimé.
 - Le matricule et l'adresse email de l'employé doivent être strictement uniques.
 - Un employé ne peut pas être son propre manager (`BusinessRuleException`).
-- Un employé ayant des contrats enregistrés ou encadrant des collaborateurs ne peut pas être supprimé (`ConflictException`).
+- Un employé ayant des contrats enregistrés, encadrant des collaborateurs ou possédant des demandes de congé ne peut pas être supprimé (`ConflictException`).
 - Recherche et consultation paginées (`Pageable`) avec tri et filtres combinés (nom, prénom, département).
 
 ### Gestion des Contrats (US3)
@@ -110,9 +110,12 @@ classDiagram
 
 ### Gestion des Congés & Soldes (US4, US5, US6)
 - Les types de congés initiaux sont **Annuel** (22 jours/an) et **Exceptionnel** (10 jours/an).
+  > [!NOTE]
+  > **Point en attente de confirmation du formateur** : Le brief officiel ne spécifiant pas explicitement les quotas annuels de jours par type de congé, les valeurs par défaut de **22 jours** (Annuel) et **10 jours** (Exceptionnel) ont été retenues à titre indicatif et sont laissées en attente de validation formelle du formateur.
 - **Calcul en jours ouvrés** : comptabilise uniquement les jours du lundi au vendredi inclus (les samedis et dimanches sont exclus).
 - **Calcul du solde** : 
   $$\text{Solde restant} = \text{jours annuels du type} - \sum \text{jours des demandes APPROUVEE de l'année}$$
+- **Répartition entre deux années civiles** : Lorsqu'une demande de congé est à cheval sur deux années (ex. du 29 décembre au 5 janvier), les jours ouvrés sont ventilés avec précision : chaque année civile supporte uniquement les jours ouvrés qui lui correspondent (ex. 3 jours en 2025 et 3 jours en 2026). Le solde de chaque année doit être suffisant lors du dépôt et de la validation.
 - Les demandes `EN_ATTENTE`, `REFUSEE` et `ANNULEE` ne sont jamais déduites du solde.
 - **Refus automatique** : toute demande dont le nombre de jours ouvrés dépasse le solde disponible est automatiquement rejetée lors du dépôt ou de la validation.
 - **Statuts officiels** : `EN_ATTENTE`, `APPROUVEE`, `REFUSEE`, `ANNULEE`.

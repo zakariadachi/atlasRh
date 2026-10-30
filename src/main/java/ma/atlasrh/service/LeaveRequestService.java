@@ -77,17 +77,23 @@ public class LeaveRequestService {
         // Règle 3 : Interdiction des demandes qui se chevauchent pour un même employé
         if (leaveRequestRepository.hasOverlappingLeave(employeeId, dto.getStartDate(), dto.getEndDate())) {
             throw new ConflictException(
-                    "L'employé a déjà une demande de congé en attente ou approuvée sur cette période.");
+                    "L'employé a déjà une demande de congé qui chevauche la période demandée.");
         }
 
-        // Règle 4 : Refus automatique d'une demande dépassant le solde
-        int targetYear = dto.getStartDate().getYear();
-        int remainingBalance = leaveBalanceService.getRemainingBalance(employeeId, leaveType.getId(), targetYear);
-
-        if (businessDays > remainingBalance) {
-            throw new BusinessRuleException(
-                    "Solde insuffisant pour le type de congé '" + leaveType.getName() + "'. "
-                            + "Solde restant : " + remainingBalance + " jour(s), demandé : " + businessDays + " jour(s)");
+        // Règle 4 : Refus automatique d'une demande dépassant le solde pour chaque année concernée
+        int startYear = dto.getStartDate().getYear();
+        int endYear = dto.getEndDate().getYear();
+        for (int y = startYear; y <= endYear; y++) {
+            int daysForYear = BusinessDayCalculator.calculateBusinessDaysForYear(dto.getStartDate(), dto.getEndDate(), y);
+            if (daysForYear > 0) {
+                int remainingBalance = leaveBalanceService.getRemainingBalance(employeeId, leaveType.getId(), y);
+                if (daysForYear > remainingBalance) {
+                    String yearSuffix = (startYear != endYear) ? " (année " + y + ")" : "";
+                    throw new BusinessRuleException(
+                            "Solde insuffisant pour le type de congé '" + leaveType.getName() + "'" + yearSuffix + ". "
+                                    + "Solde restant : " + remainingBalance + " jour(s), demandé : " + daysForYear + " jour(s)");
+                }
+            }
         }
 
         LeaveRequest leaveRequest = new LeaveRequest();
@@ -154,15 +160,22 @@ public class LeaveRequestService {
                             + leaveRequest.getStatus() + ")");
         }
 
-        // Vérification de sécurité sur le solde
-        int targetYear = leaveRequest.getStartDate().getYear();
-        int remaining = leaveBalanceService.getRemainingBalance(
-                leaveRequest.getEmployee().getId(), leaveRequest.getLeaveType().getId(), targetYear);
-
-        if (leaveRequest.getBusinessDays() > remaining) {
-            throw new BusinessRuleException(
-                    "Impossible d'approuver : le solde disponible (" + remaining + " jours) est inférieur "
-                            + "au nombre de jours demandés (" + leaveRequest.getBusinessDays() + " jours)");
+        // Vérification de sécurité sur le solde pour chaque année concernée
+        int startYear = leaveRequest.getStartDate().getYear();
+        int endYear = leaveRequest.getEndDate().getYear();
+        for (int y = startYear; y <= endYear; y++) {
+            int daysForYear = BusinessDayCalculator.calculateBusinessDaysForYear(
+                    leaveRequest.getStartDate(), leaveRequest.getEndDate(), y);
+            if (daysForYear > 0) {
+                int remaining = leaveBalanceService.getRemainingBalance(
+                        leaveRequest.getEmployee().getId(), leaveRequest.getLeaveType().getId(), y);
+                if (daysForYear > remaining) {
+                    String yearSuffix = (startYear != endYear) ? " pour l'année " + y : "";
+                    throw new BusinessRuleException(
+                            "Impossible d'approuver : le solde disponible" + yearSuffix + " (" + remaining + " jours) est inférieur "
+                                    + "au nombre de jours demandés (" + daysForYear + " jours)");
+                }
+            }
         }
 
         leaveRequest.setStatus(LeaveStatus.APPROUVEE);
