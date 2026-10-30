@@ -10,16 +10,24 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import ma.atlasrh.dto.ContractCreateDTO;
 import ma.atlasrh.dto.ContractResponseDTO;
+import ma.atlasrh.dto.ContractUpdateDTO;
+import ma.atlasrh.dto.PageResponseDTO;
 import ma.atlasrh.exception.ErrorResponse;
 import ma.atlasrh.service.ContractService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -96,5 +104,58 @@ public class ContractController {
     public ResponseEntity<ContractResponseDTO> terminate(
             @Parameter(description = "Identifiant du contrat") @PathVariable Long id) {
         return ResponseEntity.ok(contractService.terminate(id));
+    }
+
+    @GetMapping("/contracts")
+    @Operation(summary = "Lister les contrats",
+            description = "Retourne la liste paginée de tous les contrats de l'entreprise.")
+    @ApiResponse(responseCode = "200", description = "Liste paginée des contrats")
+    public ResponseEntity<PageResponseDTO<ContractResponseDTO>> findAll(
+            @Parameter(description = "Numéro de page (0-indexed)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Taille de la page") @RequestParam(defaultValue = "10") int size,
+            @Parameter(description = "Champ de tri") @RequestParam(defaultValue = "startDate") String sortBy,
+            @Parameter(description = "Direction du tri (asc/desc)") @RequestParam(defaultValue = "desc") String sortDir) {
+
+        Sort sort = sortDir.equalsIgnoreCase("desc")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return ResponseEntity.ok(contractService.findAll(pageable));
+    }
+
+    @PutMapping("/contracts/{id}")
+    @Operation(summary = "Modifier un contrat",
+            description = "Met à jour les informations d'un contrat existant en vérifiant la cohérence des dates et des types.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Contrat mis à jour avec succès",
+                    content = @Content(schema = @Schema(implementation = ContractResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Données invalides ou règle métier violée",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Contrat introuvable",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Chevauchement avec un autre contrat",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ContractResponseDTO> update(
+            @Parameter(description = "Identifiant du contrat") @PathVariable Long id,
+            @Valid @RequestBody ContractUpdateDTO dto) {
+        return ResponseEntity.ok(contractService.update(id, dto));
+    }
+
+    @DeleteMapping("/contracts/{id}")
+    @Operation(summary = "Supprimer un contrat",
+            description = "Supprime un contrat selon les règles métier. Impossible de supprimer un contrat en cours (actif).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Contrat supprimé avec succès"),
+            @ApiResponse(responseCode = "404", description = "Contrat introuvable",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Impossible de supprimer un contrat en cours",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> delete(
+            @Parameter(description = "Identifiant du contrat") @PathVariable Long id) {
+        contractService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

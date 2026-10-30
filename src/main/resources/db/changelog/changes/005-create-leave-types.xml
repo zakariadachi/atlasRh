@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="005-create-leave-types" author="atlasrh">
+        <createTable tableName="leave_types">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uk_leave_types_name"/>
+            </column>
+            <column name="description" type="VARCHAR(500)"/>
+            <column name="days_per_year" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <sql>
+            ALTER TABLE leave_types ADD CONSTRAINT chk_days_per_year_positive CHECK (days_per_year > 0);
+        </sql>
+
+        <!-- Données initiales des types de congé imposés par le brief : annuel et exceptionnel -->
+        <insert tableName="leave_types">
+            <column name="id" valueNumeric="1"/>
+            <column name="name" value="Annuel"/>
+            <column name="description" value="Congé annuel payé"/>
+            <column name="days_per_year" valueNumeric="22"/>
+        </insert>
+        <insert tableName="leave_types">
+            <column name="id" valueNumeric="2"/>
+            <column name="name" value="Exceptionnel"/>
+            <column name="description" value="Congé pour événements familiaux et exceptionnels"/>
+            <column name="days_per_year" valueNumeric="10"/>
+        </insert>
+
+        <sql>SELECT setval('leave_types_id_seq', (SELECT MAX(id) FROM leave_types));</sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -2,6 +2,12 @@ package ma.atlasrh.service;
 
 import ma.atlasrh.dto.ContractCreateDTO;
 import ma.atlasrh.dto.ContractResponseDTO;
+import ma.atlasrh.dto.ContractUpdateDTO;
+import ma.atlasrh.dto.PageResponseDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import ma.atlasrh.entity.Contract;
 import ma.atlasrh.entity.ContractType;
 import ma.atlasrh.entity.Employee;
@@ -209,5 +215,112 @@ class ContractServiceTest {
         List<ContractResponseDTO> result = contractService.getContractHistory(1L);
 
         assertThat(result).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Modifier un contrat avec succès")
+    void update_shouldSucceed() {
+        ContractUpdateDTO updateDTO = new ContractUpdateDTO(ContractType.CDI, LocalDate.of(2020, 1, 1), null, new BigDecimal("16000"));
+        when(contractRepository.findById(1L)).thenReturn(Optional.of(contract));
+        when(contractRepository.hasOverlappingContractExcluding(eq(1L), eq(1L), any(), any())).thenReturn(false);
+        when(contractRepository.save(contract)).thenReturn(contract);
+        when(contractMapper.toResponseDTO(contract)).thenReturn(responseDTO);
+
+        ContractResponseDTO result = contractService.update(1L, updateDTO);
+
+        assertThat(result).isNotNull();
+        verify(contractRepository).save(contract);
+    }
+
+    @Test
+    @DisplayName("Modifier un contrat CDD sans date de fin doit lever BusinessRuleException")
+    void update_cddWithoutEndDate_shouldThrow() {
+        ContractUpdateDTO updateDTO = new ContractUpdateDTO(ContractType.CDD, LocalDate.of(2020, 1, 1), null, new BigDecimal("16000"));
+        when(contractRepository.findById(1L)).thenReturn(Optional.of(contract));
+
+        assertThatThrownBy(() -> contractService.update(1L, updateDTO))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("date de fin");
+    }
+
+    @Test
+    @DisplayName("Modifier un contrat avec date de fin avant début doit lever BusinessRuleException")
+    void update_endDateBeforeStartDate_shouldThrow() {
+        ContractUpdateDTO updateDTO = new ContractUpdateDTO(ContractType.CDD, LocalDate.of(2024, 6, 1), LocalDate.of(2024, 1, 1), new BigDecimal("16000"));
+        when(contractRepository.findById(1L)).thenReturn(Optional.of(contract));
+
+        assertThatThrownBy(() -> contractService.update(1L, updateDTO))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("antérieure");
+    }
+
+    @Test
+    @DisplayName("Modifier un contrat créant un chevauchement doit lever ConflictException")
+    void update_overlapping_shouldThrowConflict() {
+        ContractUpdateDTO updateDTO = new ContractUpdateDTO(ContractType.CDI, LocalDate.of(2020, 1, 1), null, new BigDecimal("16000"));
+        when(contractRepository.findById(1L)).thenReturn(Optional.of(contract));
+        when(contractRepository.hasOverlappingContractExcluding(eq(1L), eq(1L), any(), any())).thenReturn(true);
+
+        assertThatThrownBy(() -> contractService.update(1L, updateDTO))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("chevauche");
+    }
+
+    @Test
+    @DisplayName("Modifier un contrat inexistant doit lever ResourceNotFoundException")
+    void update_notFound_shouldThrow() {
+        ContractUpdateDTO updateDTO = new ContractUpdateDTO(ContractType.CDI, LocalDate.of(2020, 1, 1), null, new BigDecimal("16000"));
+        when(contractRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> contractService.update(99L, updateDTO))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Supprimer un contrat terminé avec succès")
+    void delete_terminatedContract_shouldSucceed() {
+        contract.setEndDate(LocalDate.of(2020, 1, 2));
+        when(contractRepository.findById(1L)).thenReturn(Optional.of(contract));
+
+        contractService.delete(1L);
+
+        verify(contractRepository).delete(contract);
+    }
+
+    @Test
+    @DisplayName("Supprimer un contrat actif doit lever ConflictException")
+    void delete_activeContract_shouldThrowConflict() {
+        // Contrat CDI sans date de fin (actif)
+        contract.setEndDate(null);
+        when(contractRepository.findById(1L)).thenReturn(Optional.of(contract));
+
+        assertThatThrownBy(() -> contractService.delete(1L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("en cours");
+
+        verify(contractRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Supprimer un contrat inexistant doit lever ResourceNotFoundException")
+    void delete_notFound_shouldThrow() {
+        when(contractRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> contractService.delete(99L))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Lister les contrats paginés avec succès")
+    void findAll_shouldReturnPage() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Contract> page = new PageImpl<>(List.of(contract), pageable, 1);
+        when(contractRepository.findAll(pageable)).thenReturn(page);
+        when(contractMapper.toResponseDTO(contract)).thenReturn(responseDTO);
+
+        PageResponseDTO<ContractResponseDTO> result = contractService.findAll(pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 }
