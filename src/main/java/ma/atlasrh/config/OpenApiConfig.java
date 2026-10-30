@@ -14,8 +14,8 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("AtlasRH API")
-                        .description("API REST de gestion des ressources humaines — Livrable 1 : "
-                                + "Gestion des départements, employés et contrats")
+                        .description("API REST de gestion des ressources humaines — Solution complète : "
+                                + "Départements, Employés, Contrats, Congés, Validation Manager et Soldes")
                         .version("1.0.0")
                         .contact(new Contact()
                                 .name("AtlasRH")
