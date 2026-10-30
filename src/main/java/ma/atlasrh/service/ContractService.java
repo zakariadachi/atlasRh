@@ -2,6 +2,8 @@ package ma.atlasrh.service;
 
 import ma.atlasrh.dto.ContractCreateDTO;
 import ma.atlasrh.dto.ContractResponseDTO;
+import ma.atlasrh.dto.ContractUpdateDTO;
+import ma.atlasrh.dto.PageResponseDTO;
 import ma.atlasrh.entity.Contract;
 import ma.atlasrh.entity.ContractType;
 import ma.atlasrh.entity.Employee;
@@ -13,6 +15,8 @@ import ma.atlasrh.repository.ContractRepository;
 import ma.atlasrh.repository.EmployeeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -148,5 +152,86 @@ public class ContractService {
                 .stream()
                 .map(contractMapper::toResponseDTO)
                 .collect(Collectors.toList());
+    }
+
+    public ContractResponseDTO update(Long contractId, ContractUpdateDTO dto) {
+        log.info("Mise à jour du contrat id={}", contractId);
+
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Contrat avec l'id " + contractId + " introuvable"));
+
+        // Vérifier que CDD et STAGE ont une date de fin
+        if ((dto.getType() == ContractType.CDD
+                || dto.getType() == ContractType.STAGE)
+                && dto.getEndDate() == null) {
+
+            throw new BusinessRuleException(
+                    "Un contrat de type " + dto.getType()
+                            + " doit obligatoirement avoir une date de fin");
+        }
+
+        // Vérifier que la date de fin n'est pas antérieure à la date de début
+        if (dto.getEndDate() != null
+                && dto.getEndDate().isBefore(dto.getStartDate())) {
+
+            throw new BusinessRuleException(
+                    "La date de fin ne peut pas être antérieure à la date de début");
+        }
+
+        // Vérifier le chevauchement avec les autres contrats de l'employé
+        Long employeeId = contract.getEmployee().getId();
+        if (contractRepository.hasOverlappingContractExcluding(
+                employeeId, contractId, dto.getStartDate(), dto.getEndDate())) {
+
+            throw new ConflictException(
+                    "Ce contrat chevauche un autre contrat existant pour cet employé.");
+        }
+
+        contractMapper.updateEntityFromDTO(dto, contract);
+        contract = contractRepository.save(contract);
+
+        log.info("Contrat id={} mis à jour", contractId);
+        return contractMapper.toResponseDTO(contract);
+    }
+
+    public void delete(Long contractId) {
+        log.info("Suppression du contrat id={}", contractId);
+
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Contrat avec l'id " + contractId + " introuvable"));
+
+        LocalDate today = LocalDate.now();
+        boolean isActive = contract.getStartDate().compareTo(today) <= 0
+                && (contract.getEndDate() == null || !contract.getEndDate().isBefore(today));
+
+        if (isActive) {
+            throw new ConflictException(
+                    "Impossible de supprimer un contrat en cours. Il doit être terminé au préalable.");
+        }
+
+        contractRepository.delete(contract);
+        log.info("Contrat id={} supprimé", contractId);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDTO<ContractResponseDTO> findAll(Pageable pageable) {
+        log.debug("Listing de tous les contrats paginés");
+
+        Page<Contract> page = contractRepository.findAll(pageable);
+        List<ContractResponseDTO> content = page.getContent().stream()
+                .map(contractMapper::toResponseDTO)
+                .collect(Collectors.toList());
+
+        return new PageResponseDTO<>(
+                content,
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.isFirst(),
+                page.isLast()
+        );
     }
 }
