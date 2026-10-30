@@ -9,5 +9,7 @@
     <include file="db/changelog/changes/002-create-employees.xml"/>
     <include file="db/changelog/changes/003-create-contracts.xml"/>
     <include file="db/changelog/changes/004-insert-demo-data.xml"/>
+    <include file="db/changelog/changes/005-create-leave-types.xml"/>
+    <include file="db/changelog/changes/006-create-leave-requests.xml"/>
 
 </databaseChangeLog>
