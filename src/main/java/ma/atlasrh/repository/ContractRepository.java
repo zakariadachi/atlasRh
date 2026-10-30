@@ -28,6 +28,8 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
            "AND (c.endDate IS NULL OR c.endDate >= :date)")
     boolean hasActiveContract(@Param("employeeId") Long employeeId, @Param("date") LocalDate date);
 
+    boolean existsByEmployeeId(Long employeeId);
+
     /**
      * Vérifie s'il y a un chevauchement avec un contrat existant pour un employé.
      * Un nouveau contrat [newStart, newEnd] chevauche un contrat existant [startDate, endDate] si :
@@ -39,4 +41,16 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     boolean hasOverlappingContract(@Param("employeeId") Long employeeId,
                                     @Param("newStart") LocalDate newStart,
                                     @Param("newEnd") LocalDate newEnd);
+
+    /**
+     * Vérifie s'il y a un chevauchement en excluant un contrat donné (pour la mise à jour).
+     */
+    @Query("SELECT COUNT(c) > 0 FROM Contract c WHERE c.employee.id = :employeeId " +
+           "AND c.id != :contractId " +
+           "AND c.startDate <= COALESCE(:newEnd, CAST('9999-12-31' AS localdate)) " +
+           "AND (c.endDate IS NULL OR c.endDate >= :newStart)")
+    boolean hasOverlappingContractExcluding(@Param("employeeId") Long employeeId,
+                                           @Param("contractId") Long contractId,
+                                           @Param("newStart") LocalDate newStart,
+                                           @Param("newEnd") LocalDate newEnd);
 }

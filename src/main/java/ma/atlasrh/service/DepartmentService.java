@@ -38,11 +38,13 @@ public class DepartmentService {
         log.info("Création du département : {}", dto.getName());
 
         if (departmentRepository.existsByName(dto.getName())) {
-            throw new ConflictException("Un département avec le nom '" + dto.getName() + "' existe déjà");
+            throw new ConflictException(
+                    "Un département avec le nom '" + dto.getName() + "' existe déjà");
         }
 
         Department department = departmentMapper.toEntity(dto);
         department = departmentRepository.save(department);
+
         log.info("Département créé avec l'id {}", department.getId());
 
         return departmentMapper.toResponseDTO(department);
@@ -52,10 +54,12 @@ public class DepartmentService {
         log.info("Mise à jour du département id={}", id);
 
         Department department = departmentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Département", id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Département avec l'id " + id + " introuvable"));
 
         if (departmentRepository.existsByNameAndIdNot(dto.getName(), id)) {
-            throw new ConflictException("Un département avec le nom '" + dto.getName() + "' existe déjà");
+            throw new ConflictException(
+                    "Un département avec le nom '" + dto.getName() + "' existe déjà");
         }
 
         departmentMapper.updateEntityFromDTO(dto, department);
@@ -69,7 +73,8 @@ public class DepartmentService {
         log.debug("Recherche du département id={}", id);
 
         Department department = departmentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Département", id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Département avec l'id " + id + " introuvable"));
 
         return departmentMapper.toResponseDTO(department);
     }
@@ -87,14 +92,17 @@ public class DepartmentService {
         log.info("Suppression du département id={}", id);
 
         Department department = departmentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Département", id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Département avec l'id " + id + " introuvable"));
 
         if (employeeRepository.existsByDepartmentId(id)) {
-            throw new ConflictException("Impossible de supprimer le département '" + department.getName()
-                    + "' car il contient encore des employés");
+            throw new ConflictException(
+                    "Impossible de supprimer le département '" + department.getName()
+                            + "' car il contient encore des employés");
         }
 
         departmentRepository.delete(department);
+
         log.info("Département id={} supprimé", id);
     }
 }

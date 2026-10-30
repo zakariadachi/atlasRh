@@ -9,6 +9,7 @@ import ma.atlasrh.exception.BusinessRuleException;
 import ma.atlasrh.exception.ConflictException;
 import ma.atlasrh.exception.ResourceNotFoundException;
 import ma.atlasrh.mapper.EmployeeMapper;
+import ma.atlasrh.repository.ContractRepository;
 import ma.atlasrh.repository.DepartmentRepository;
 import ma.atlasrh.repository.EmployeeRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,9 @@ class EmployeeServiceTest {
 
     @Mock
     private DepartmentRepository departmentRepository;
+
+    @Mock
+    private ContractRepository contractRepository;
 
     @Mock
     private EmployeeMapper employeeMapper;
@@ -179,5 +183,55 @@ class EmployeeServiceTest {
 
         assertThatThrownBy(() -> employeeService.getTeam(99L))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("Supprimer un employé sans contrat ni subordonné avec succès")
+    void delete_shouldSucceed() {
+        when(employeeRepository.findById(10L)).thenReturn(Optional.of(employee));
+        when(contractRepository.existsByEmployeeId(10L)).thenReturn(false);
+        when(employeeRepository.existsByManagerId(10L)).thenReturn(false);
+
+        employeeService.delete(10L);
+
+        verify(employeeRepository).delete(employee);
+    }
+
+    @Test
+    @DisplayName("Supprimer un employé inexistant doit lever ResourceNotFoundException")
+    void delete_notFound_shouldThrow() {
+        when(employeeRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> employeeService.delete(99L))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        verify(employeeRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Supprimer un employé ayant des contrats doit lever ConflictException")
+    void delete_withContracts_shouldThrowConflict() {
+        when(employeeRepository.findById(10L)).thenReturn(Optional.of(employee));
+        when(contractRepository.existsByEmployeeId(10L)).thenReturn(true);
+
+        assertThatThrownBy(() -> employeeService.delete(10L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("contrats");
+
+        verify(employeeRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Supprimer un employé manager doit lever ConflictException")
+    void delete_isManager_shouldThrowConflict() {
+        when(employeeRepository.findById(10L)).thenReturn(Optional.of(employee));
+        when(contractRepository.existsByEmployeeId(10L)).thenReturn(false);
+        when(employeeRepository.existsByManagerId(10L)).thenReturn(true);
+
+        assertThatThrownBy(() -> employeeService.delete(10L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("manager");
+
+        verify(employeeRepository, never()).delete(any());
     }
 }

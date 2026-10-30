@@ -21,6 +21,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     boolean existsByDepartmentId(Long departmentId);
 
+    boolean existsByManagerId(Long managerId);
+
     List<Employee> findByManagerId(Long managerId);
 
     /**

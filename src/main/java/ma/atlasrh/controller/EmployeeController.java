@@ -19,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -121,5 +122,21 @@ public class EmployeeController {
     public ResponseEntity<List<EmployeeResponseDTO>> getTeam(
             @Parameter(description = "Identifiant du manager") @PathVariable Long id) {
         return ResponseEntity.ok(employeeService.getTeam(id));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Supprimer un employé",
+            description = "Supprime un employé selon les règles métier. Impossible s'il a des contrats ou encadre d'autres collaborateurs.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Employé supprimé avec succès"),
+            @ApiResponse(responseCode = "404", description = "Employé introuvable",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "L'employé possède des contrats ou encadre des collaborateurs",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Void> delete(
+            @Parameter(description = "Identifiant de l'employé") @PathVariable Long id) {
+        employeeService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }
