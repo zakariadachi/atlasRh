@@ -1,8 +1,6 @@
 package ma.atlasrh.exception;
 
-/**
- * Exception lancée lors d'un conflit métier (unicité, contrat en cours, etc.).
- */
+// Exception en cas de conflit métier (code HTTP 409)
 public class ConflictException extends RuntimeException {
 
     public ConflictException(String message) {

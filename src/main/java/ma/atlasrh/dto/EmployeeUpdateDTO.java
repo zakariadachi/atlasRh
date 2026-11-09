@@ -7,10 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
-/**
- * DTO pour la mise à jour d'un employé.
- * Le matricule n'est pas modifiable après création.
- */
+// DTO de mise à jour d'un employé (matricule non modifiable)
 public class EmployeeUpdateDTO {
 
     @NotBlank(message = "Le prénom est obligatoire")

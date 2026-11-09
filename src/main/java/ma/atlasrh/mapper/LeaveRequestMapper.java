@@ -5,12 +5,12 @@ import ma.atlasrh.entity.LeaveRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper
 public interface LeaveRequestMapper {
 
-    @Mapping(source = "employee.id", target = "employeeId")
-    @Mapping(target = "employeeFullName", expression = "java(leaveRequest.getEmployee() != null ? leaveRequest.getEmployee().getFirstName() + \" \" + leaveRequest.getEmployee().getLastName() : null)")
-    @Mapping(source = "leaveType.id", target = "leaveTypeId")
-    @Mapping(source = "leaveType.name", target = "leaveTypeName")
-    LeaveRequestResponseDTO toResponseDTO(LeaveRequest leaveRequest);
+    @Mapping(target = "employeeId", source = "employee.id")
+    @Mapping(target = "employeeFullName", expression = "java(lr.getEmployee().getFirstName() + \" \" + lr.getEmployee().getLastName())")
+    @Mapping(target = "leaveTypeId", source = "leaveType.id")
+    @Mapping(target = "leaveTypeName", source = "leaveType.name")
+    LeaveRequestResponseDTO toResponseDTO(LeaveRequest lr);
 }

@@ -7,9 +7,7 @@ import ma.atlasrh.entity.ContractType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * DTO pour la création d'un contrat.
- */
+// DTO de création d'un contrat
 public class ContractCreateDTO {
 
     @NotNull(message = "Le type de contrat est obligatoire")

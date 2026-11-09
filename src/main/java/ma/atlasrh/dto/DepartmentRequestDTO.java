@@ -3,9 +3,7 @@ package ma.atlasrh.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/**
- * DTO pour la création et la mise à jour d'un département.
- */
+// DTO de création/mise à jour d'un département
 public class DepartmentRequestDTO {
 
     @NotBlank(message = "Le nom du département est obligatoire")

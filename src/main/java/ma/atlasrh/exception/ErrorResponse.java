@@ -3,9 +3,7 @@ package ma.atlasrh.exception;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-/**
- * Structure de réponse d'erreur standardisée pour l'API.
- */
+// Format standard de réponse d'erreur de l'API
 public class ErrorResponse {
 
     private int status;

@@ -2,12 +2,7 @@ package ma.atlasrh.dto;
 
 import java.util.List;
 
-/**
- * DTO générique pour les réponses paginées.
- * Évite d'exposer Page&lt;Entity&gt; directement depuis les controllers.
- *
- * @param <T> le type de DTO contenu dans la page
- */
+// Wrapper générique pour les réponses paginées
 public class PageResponseDTO<T> {
 
     private List<T> content;

@@ -2,8 +2,6 @@ package ma.atlasrh.repository;
 
 import ma.atlasrh.entity.LeaveRequest;
 import ma.atlasrh.entity.LeaveStatus;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,47 +13,27 @@ import java.util.List;
 @Repository
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
 
+    boolean existsByEmployeeId(Long employeeId);
+
     List<LeaveRequest> findByEmployeeIdOrderByStartDateDesc(Long employeeId);
 
-    Page<LeaveRequest> findByEmployeeId(Long employeeId, Pageable pageable);
+    List<LeaveRequest> findByEmployeeIdAndStatusOrderByStartDateDesc(Long employeeId, LeaveStatus status);
 
     List<LeaveRequest> findByEmployeeManagerIdAndStatus(Long managerId, LeaveStatus status);
 
-    /**
-     * Vérifie s'il existe une demande active (EN_ATTENTE ou APPROUVEE) qui chevauche la période demandée.
-     */
     @Query("SELECT COUNT(lr) > 0 FROM LeaveRequest lr WHERE lr.employee.id = :employeeId " +
-           "AND lr.status IN (ma.atlasrh.entity.LeaveStatus.EN_ATTENTE, ma.atlasrh.entity.LeaveStatus.APPROUVEE) " +
-           "AND lr.startDate <= :newEnd AND lr.endDate >= :newStart")
+           "AND lr.status NOT IN (ma.atlasrh.entity.LeaveStatus.REFUSEE, ma.atlasrh.entity.LeaveStatus.ANNULEE) " +
+           "AND lr.startDate <= :endDate AND lr.endDate >= :startDate")
     boolean hasOverlappingLeave(@Param("employeeId") Long employeeId,
-                                @Param("newStart") LocalDate newStart,
-                                @Param("newEnd") LocalDate newEnd);
+                                @Param("startDate") LocalDate startDate,
+                                @Param("endDate") LocalDate endDate);
 
-    boolean existsByEmployeeId(Long employeeId);
-
-    /**
-     * Recherche toutes les demandes APPROUVEE d'un employé pour un type donné chevauchant une année.
-     */
-    @Query("SELECT lr FROM LeaveRequest lr " +
-           "WHERE lr.employee.id = :employeeId " +
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.id = :employeeId " +
            "AND lr.leaveType.id = :leaveTypeId " +
            "AND lr.status = ma.atlasrh.entity.LeaveStatus.APPROUVEE " +
-           "AND lr.startDate <= :yearEnd " +
-           "AND lr.endDate >= :yearStart")
+           "AND lr.startDate <= :yearEnd AND lr.endDate >= :yearStart")
     List<LeaveRequest> findApprovedLeavesInYearRange(@Param("employeeId") Long employeeId,
-                                                    @Param("leaveTypeId") Long leaveTypeId,
-                                                    @Param("yearStart") LocalDate yearStart,
-                                                    @Param("yearEnd") LocalDate yearEnd);
-
-    /**
-     * Calcule le total des jours ouvrés des demandes APPROUVEE pour un employé, un type et une année donnés.
-     */
-    @Query("SELECT COALESCE(SUM(lr.businessDays), 0) FROM LeaveRequest lr " +
-           "WHERE lr.employee.id = :employeeId " +
-           "AND lr.leaveType.id = :leaveTypeId " +
-           "AND lr.status = ma.atlasrh.entity.LeaveStatus.APPROUVEE " +
-           "AND YEAR(lr.startDate) = :year")
-    int countApprovedDaysByYear(@Param("employeeId") Long employeeId,
-                                @Param("leaveTypeId") Long leaveTypeId,
-                                @Param("year") int year);
+                                                      @Param("leaveTypeId") Long leaveTypeId,
+                                                      @Param("yearStart") LocalDate yearStart,
+                                                      @Param("yearEnd") LocalDate yearEnd);
 }

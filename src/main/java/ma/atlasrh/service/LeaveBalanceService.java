@@ -9,20 +9,17 @@ import ma.atlasrh.exception.ResourceNotFoundException;
 import ma.atlasrh.repository.EmployeeRepository;
 import ma.atlasrh.repository.LeaveRequestRepository;
 import ma.atlasrh.repository.LeaveTypeRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.time.Period;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
 public class LeaveBalanceService {
-
-    private static final Logger log = LoggerFactory.getLogger(LeaveBalanceService.class);
 
     private final EmployeeRepository employeeRepository;
     private final LeaveTypeRepository leaveTypeRepository;
@@ -36,72 +33,54 @@ public class LeaveBalanceService {
         this.leaveRequestRepository = leaveRequestRepository;
     }
 
-    /**
-     * Calcule le total des jours ouvrés des demandes APPROUVEE d'un employé pour un type donné,
-     * répartis précisément sur l'année demandée.
-     * Si une demande chevauche deux années, seuls les jours ouvrés appartenant à l'année demandée sont comptabilisés.
-     */
-    public int countApprovedDaysByYear(Long employeeId, Long leaveTypeId, int year) {
-        LocalDate yearStart = LocalDate.of(year, 1, 1);
-        LocalDate yearEnd = LocalDate.of(year, 12, 31);
-        List<LeaveRequest> approvedLeaves = leaveRequestRepository.findApprovedLeavesInYearRange(
-                employeeId, leaveTypeId, yearStart, yearEnd);
-
-        int totalDays = 0;
-        for (LeaveRequest lr : approvedLeaves) {
-            totalDays += BusinessDayCalculator.calculateBusinessDaysForYear(
-                    lr.getStartDate(), lr.getEndDate(), year);
-        }
-        return totalDays;
-    }
-
-    /**
-     * Calcule le solde restant pour un employé, un type et une année donnés.
-     * Règle officielle : Solde = jours annuels du type - jours des demandes approuvées de l'année.
-     */
     public int getRemainingBalance(Long employeeId, Long leaveTypeId, int year) {
         LeaveType leaveType = leaveTypeRepository.findById(leaveTypeId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Type de congé avec l'id " + leaveTypeId + " introuvable"));
+                .orElseThrow(() -> new ResourceNotFoundException("Type de congé", leaveTypeId));
 
-        int approvedDays = countApprovedDaysByYear(employeeId, leaveTypeId, year);
-        int remaining = leaveType.getDaysPerYear() - approvedDays;
+        LocalDate yearStart = LocalDate.of(year, 1, 1);
+        LocalDate yearEnd = LocalDate.of(year, 12, 31);
 
-        log.debug("Solde calculé pour employé={}, type={}, année={} : {} jours restants ({} annuels - {} approuvés)",
-                employeeId, leaveType.getName(), year, remaining, leaveType.getDaysPerYear(), approvedDays);
+        List<LeaveRequest> approved = leaveRequestRepository
+                .findApprovedLeavesInYearRange(employeeId, leaveTypeId, yearStart, yearEnd);
 
-        return remaining;
+        int usedDays = approved.stream()
+                .mapToInt(lr -> BusinessDayCalculator.calculateBusinessDaysForYear(lr.getStartDate(), lr.getEndDate(), year))
+                .sum();
+
+        return leaveType.getDaysPerYear() - usedDays;
     }
 
-    /**
-     * Récupère le bilan complet des soldes de congés de l'employé pour une année (par défaut l'année courante).
-     */
     public EmployeeLeaveBalanceDTO getEmployeeBalances(Long employeeId, Integer year) {
-        int targetYear = (year != null) ? year : LocalDate.now().getYear();
-
-        log.info("Consultation des soldes de congés de l'employé id={} pour l'année {}", employeeId, targetYear);
-
+        if (year == null) year = LocalDate.now().getYear();
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Employé avec l'id " + employeeId + " introuvable"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employé", employeeId));
 
-        List<LeaveType> types = leaveTypeRepository.findAll();
-        List<LeaveBalanceItemDTO> items = new ArrayList<>();
+        List<LeaveType> leaveTypes = leaveTypeRepository.findAll();
 
-        for (LeaveType type : types) {
-            int approved = countApprovedDaysByYear(employeeId, type.getId(), targetYear);
-            int remaining = type.getDaysPerYear() - approved;
+        final int targetYear = year;
+        List<LeaveBalanceItemDTO> balances = leaveTypes.stream().map(lt -> {
+            LocalDate yearStart = LocalDate.of(targetYear, 1, 1);
+            LocalDate yearEnd = LocalDate.of(targetYear, 12, 31);
 
-            items.add(new LeaveBalanceItemDTO(
-                    type.getId(),
-                    type.getName(),
-                    type.getDaysPerYear(),
-                    approved,
-                    remaining
-            ));
-        }
+            List<LeaveRequest> approved = leaveRequestRepository
+                    .findApprovedLeavesInYearRange(employeeId, lt.getId(), yearStart, yearEnd);
 
-        String fullName = employee.getFirstName() + " " + employee.getLastName();
-        return new EmployeeLeaveBalanceDTO(employeeId, fullName, targetYear, items);
+            int usedDays = approved.stream()
+                    .mapToInt(lr -> BusinessDayCalculator.calculateBusinessDaysForYear(lr.getStartDate(), lr.getEndDate(), targetYear))
+                    .sum();
+
+            return new LeaveBalanceItemDTO(lt.getId(), lt.getName(),
+                    lt.getDaysPerYear(), usedDays, lt.getDaysPerYear() - usedDays);
+        }).collect(Collectors.toList());
+
+        Period seniority = Period.between(employee.getHireDate(), LocalDate.now());
+
+        EmployeeLeaveBalanceDTO dto = new EmployeeLeaveBalanceDTO();
+        dto.setEmployeeId(employee.getId());
+        dto.setEmployeeFullName(employee.getFirstName() + " " + employee.getLastName());
+        dto.setYear(targetYear);
+        dto.setSeniority(seniority.getYears() + " an(s) et " + seniority.getMonths() + " mois");
+        dto.setBalances(balances);
+        return dto;
     }
 }

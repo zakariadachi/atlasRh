@@ -5,9 +5,7 @@ import ma.atlasrh.entity.ContractType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * DTO de réponse pour un contrat.
- */
+// DTO de réponse pour un contrat
 public class ContractResponseDTO {
 
     private Long id;

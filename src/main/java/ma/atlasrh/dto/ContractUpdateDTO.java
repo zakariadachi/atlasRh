@@ -7,9 +7,7 @@ import ma.atlasrh.entity.ContractType;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * DTO pour la mise à jour d'un contrat existant.
- */
+// DTO de mise à jour d'un contrat
 public class ContractUpdateDTO {
 
     @NotNull(message = "Le type de contrat est obligatoire")

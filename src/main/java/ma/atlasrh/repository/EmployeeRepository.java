@@ -25,10 +25,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
     List<Employee> findByManagerId(Long managerId);
 
-    /**
-     * Recherche combinable par nom (prénom ou nom de famille) et/ou département.
-     * Les paramètres null sont ignorés grâce aux conditions OR IS NULL.
-     */
+    // Recherche par nom/prénom et/ou département
     @Query("SELECT e FROM Employee e WHERE " +
            "(:name IS NULL OR LOWER(e.firstName) LIKE LOWER(CONCAT('%', CAST(:name AS string), '%')) " +
            "OR LOWER(e.lastName) LIKE LOWER(CONCAT('%', CAST(:name AS string), '%'))) " +

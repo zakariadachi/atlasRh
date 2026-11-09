@@ -7,9 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
-/**
- * DTO pour la création d'un employé.
- */
+// DTO de création d'un employé
 public class EmployeeCreateDTO {
 
     @NotBlank(message = "Le matricule est obligatoire")

@@ -2,9 +2,7 @@ package ma.atlasrh.dto;
 
 import java.time.LocalDate;
 
-/**
- * DTO de réponse pour un employé.
- */
+// DTO de réponse pour un employé
 public class EmployeeResponseDTO {
 
     private Long id;

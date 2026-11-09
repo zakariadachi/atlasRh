@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import ma.atlasrh.entity.LeaveStatus;
 import ma.atlasrh.dto.LeaveDecisionDTO;
 import ma.atlasrh.dto.LeaveRequestCreateDTO;
 import ma.atlasrh.dto.LeaveRequestResponseDTO;
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api")
@@ -66,8 +69,9 @@ public class LeaveRequestController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<List<LeaveRequestResponseDTO>> getEmployeeLeaves(
-            @Parameter(description = "Identifiant de l'employé") @PathVariable Long employeeId) {
-        return ResponseEntity.ok(leaveRequestService.getEmployeeLeaves(employeeId));
+            @Parameter(description = "Identifiant de l'employé") @PathVariable Long employeeId,
+            @Parameter(description = "Filtre par statut (optionnel)") @RequestParam(required = false) LeaveStatus status) {
+        return ResponseEntity.ok(leaveRequestService.getEmployeeLeaves(employeeId, status));
     }
 
     @GetMapping("/leave-requests/{id}")

@@ -44,3 +44,4 @@ public class LeaveBalanceController {
         return ResponseEntity.ok(leaveBalanceService.getEmployeeBalances(employeeId, year));
     }
 }
+

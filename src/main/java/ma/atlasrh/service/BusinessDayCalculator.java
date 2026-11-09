@@ -3,19 +3,13 @@ package ma.atlasrh.service;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 
-/**
- * Calculateur de jours ouvrés imposé par le brief :
- * Lundi à vendredi, dates comprises.
- */
+// Calcul des jours ouvrés (lundi au vendredi inclus)
 public final class BusinessDayCalculator {
 
     private BusinessDayCalculator() {
     }
 
-    /**
-     * Calcule le nombre de jours ouvrés entre startDate et endDate (inclus).
-     * Compte uniquement du lundi au vendredi.
-     */
+    // Nombre de jours ouvrés entre deux dates incluses
     public static int calculateBusinessDays(LocalDate startDate, LocalDate endDate) {
         if (startDate == null || endDate == null) {
             throw new IllegalArgumentException("Les dates ne peuvent pas être nulles");
@@ -36,10 +30,7 @@ public final class BusinessDayCalculator {
         return businessDays;
     }
 
-    /**
-     * Calcule le nombre de jours ouvrés d'une période [startDate, endDate] qui tombent dans une année donnée.
-     * Compte uniquement du lundi au vendredi.
-     */
+    // Nombre de jours ouvrés pour une année donnée
     public static int calculateBusinessDaysForYear(LocalDate startDate, LocalDate endDate, int year) {
         if (startDate == null || endDate == null) {
             throw new IllegalArgumentException("Les dates ne peuvent pas être nulles");

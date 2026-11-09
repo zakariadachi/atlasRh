@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,211 +47,168 @@ public class LeaveRequestService {
         this.leaveRequestMapper = leaveRequestMapper;
     }
 
-    /**
-     * Dépôt d'une demande de congé par un employé (US5).
-     */
     public LeaveRequestResponseDTO create(Long employeeId, LeaveRequestCreateDTO dto) {
-        log.info("Dépôt d'une demande de congé pour l'employé id={}, typeId={}", employeeId, dto.getLeaveTypeId());
+        log.info("Création d'une demande de congé pour l'employé id={}", employeeId);
 
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Employé avec l'id " + employeeId + " introuvable"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employé", employeeId));
 
         LeaveType leaveType = leaveTypeRepository.findById(dto.getLeaveTypeId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Type de congé avec l'id " + dto.getLeaveTypeId() + " introuvable"));
+                .orElseThrow(() -> new ResourceNotFoundException("Type de congé", dto.getLeaveTypeId()));
 
-        // Règle 1 : Date de fin >= Date de début
-        if (dto.getEndDate().isBefore(dto.getStartDate())) {
+        LocalDate start = dto.getStartDate();
+        LocalDate end = dto.getEndDate();
+
+        if (end.isBefore(start)) {
             throw new BusinessRuleException(
                     "La date de fin ne peut pas être antérieure à la date de début");
         }
 
-        // Règle 2 : Calcul en jours ouvrés (lundi au vendredi, dates comprises)
-        int businessDays = BusinessDayCalculator.calculateBusinessDays(dto.getStartDate(), dto.getEndDate());
-        if (businessDays == 0) {
+        int totalBusinessDays = BusinessDayCalculator.calculateBusinessDays(start, end);
+        if (totalBusinessDays == 0) {
             throw new BusinessRuleException(
-                    "La période sélectionnée ne comporte aucun jour ouvré (du lundi au vendredi)");
+                    "La demande ne contient aucun jour ouvré (week-end uniquement)");
         }
 
-        // Règle 3 : Interdiction des demandes qui se chevauchent pour un même employé
-        if (leaveRequestRepository.hasOverlappingLeave(employeeId, dto.getStartDate(), dto.getEndDate())) {
+        if (leaveRequestRepository.hasOverlappingLeave(employeeId, start, end)) {
             throw new ConflictException(
-                    "L'employé a déjà une demande de congé qui chevauche la période demandée.");
+                    "Cette demande chevauche une demande existante");
         }
 
-        // Règle 4 : Refus automatique d'une demande dépassant le solde pour chaque année concernée
-        int startYear = dto.getStartDate().getYear();
-        int endYear = dto.getEndDate().getYear();
-        for (int y = startYear; y <= endYear; y++) {
-            int daysForYear = BusinessDayCalculator.calculateBusinessDaysForYear(dto.getStartDate(), dto.getEndDate(), y);
-            if (daysForYear > 0) {
-                int remainingBalance = leaveBalanceService.getRemainingBalance(employeeId, leaveType.getId(), y);
-                if (daysForYear > remainingBalance) {
-                    String yearSuffix = (startYear != endYear) ? " (année " + y + ")" : "";
-                    throw new BusinessRuleException(
-                            "Solde insuffisant pour le type de congé '" + leaveType.getName() + "'" + yearSuffix + ". "
-                                    + "Solde restant : " + remainingBalance + " jour(s), demandé : " + daysForYear + " jour(s)");
-                }
+        // Vérification du solde (gestion à cheval sur deux années)
+        int startYear = start.getYear();
+        int endYear = end.getYear();
+
+        if (startYear == endYear) {
+            int daysNeeded = totalBusinessDays;
+            int remaining = leaveBalanceService.getRemainingBalance(employeeId, leaveType.getId(), startYear);
+            if (daysNeeded > remaining) {
+                throw new BusinessRuleException(
+                        "Solde insuffisant pour " + startYear + " : " + remaining + " jour(s) disponible(s), " + daysNeeded + " demandé(s)");
+            }
+        } else {
+            int daysInStartYear = BusinessDayCalculator.calculateBusinessDaysForYear(start, end, startYear);
+            int daysInEndYear = BusinessDayCalculator.calculateBusinessDaysForYear(start, end, endYear);
+
+            int remainingStartYear = leaveBalanceService.getRemainingBalance(employeeId, leaveType.getId(), startYear);
+            if (daysInStartYear > remainingStartYear) {
+                throw new BusinessRuleException(
+                        "Solde insuffisant pour " + startYear + " : " + remainingStartYear + " jour(s) disponible(s), " + daysInStartYear + " demandé(s)");
+            }
+
+            int remainingEndYear = leaveBalanceService.getRemainingBalance(employeeId, leaveType.getId(), endYear);
+            if (daysInEndYear > remainingEndYear) {
+                throw new BusinessRuleException(
+                        "Solde insuffisant pour " + endYear + " : " + remainingEndYear + " jour(s) disponible(s), " + daysInEndYear + " demandé(s)");
             }
         }
 
-        LeaveRequest leaveRequest = new LeaveRequest();
-        leaveRequest.setEmployee(employee);
-        leaveRequest.setLeaveType(leaveType);
-        leaveRequest.setStartDate(dto.getStartDate());
-        leaveRequest.setEndDate(dto.getEndDate());
-        leaveRequest.setBusinessDays(businessDays);
-        leaveRequest.setReason(dto.getReason());
-        leaveRequest.setStatus(LeaveStatus.EN_ATTENTE);
-        leaveRequest.setCreatedAt(LocalDateTime.now());
-
+        LeaveRequest leaveRequest = new LeaveRequest(employee, leaveType, start, end, totalBusinessDays, dto.getReason());
         leaveRequest = leaveRequestRepository.save(leaveRequest);
-        log.info("Demande de congé créée avec succès id={}", leaveRequest.getId());
 
+        log.info("Demande de congé créée avec l'id {}", leaveRequest.getId());
         return leaveRequestMapper.toResponseDTO(leaveRequest);
     }
 
-    /**
-     * Annulation d'une demande par l'employé (US5).
-     * Règle : Seul l'employé peut annuler sa demande, et uniquement si elle est EN_ATTENTE.
-     */
-    public LeaveRequestResponseDTO cancel(Long requestId, Long employeeId) {
-        log.info("Annulation de la demande de congé id={} par employé id={}", requestId, employeeId);
+    public LeaveRequestResponseDTO cancel(Long leaveRequestId, Long employeeId) {
+        LeaveRequest lr = leaveRequestRepository.findById(leaveRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande de congé", leaveRequestId));
 
-        LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Demande de congé avec l'id " + requestId + " introuvable"));
-
-        // Seul l'employé concerné peut annuler sa demande
-        if (!leaveRequest.getEmployee().getId().equals(employeeId)) {
-            throw new BusinessRuleException(
-                    "Seul l'employé concerné est autorisé à annuler sa demande de congé");
+        if (!lr.getEmployee().getId().equals(employeeId)) {
+            throw new BusinessRuleException("Seul l'employé concerné peut annuler sa demande");
         }
 
-        // Seule une demande EN_ATTENTE peut être annulée
-        if (leaveRequest.getStatus() != LeaveStatus.EN_ATTENTE) {
+        if (lr.getStatus() != LeaveStatus.EN_ATTENTE) {
             throw new BusinessRuleException(
-                    "Seule une demande au statut EN_ATTENTE peut être annulée (statut actuel : "
-                            + leaveRequest.getStatus() + ")");
+                    "Seule une demande EN_ATTENTE peut être annulée");
         }
 
-        leaveRequest.setStatus(LeaveStatus.ANNULEE);
-        leaveRequest = leaveRequestRepository.save(leaveRequest);
-
-        log.info("Demande de congé id={} annulée", requestId);
-        return leaveRequestMapper.toResponseDTO(leaveRequest);
+        lr.setStatus(LeaveStatus.ANNULEE);
+        return leaveRequestMapper.toResponseDTO(leaveRequestRepository.save(lr));
     }
 
-    /**
-     * Validation d'une demande par le manager (US4).
-     * Règle : Possible uniquement sur une demande EN_ATTENTE.
-     */
-    public LeaveRequestResponseDTO approve(Long requestId) {
-        log.info("Approbation de la demande de congé id={}", requestId);
+    public LeaveRequestResponseDTO approve(Long leaveRequestId) {
+        LeaveRequest lr = leaveRequestRepository.findById(leaveRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande de congé", leaveRequestId));
 
-        LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Demande de congé avec l'id " + requestId + " introuvable"));
-
-        if (leaveRequest.getStatus() != LeaveStatus.EN_ATTENTE) {
+        if (lr.getStatus() != LeaveStatus.EN_ATTENTE) {
             throw new BusinessRuleException(
-                    "Une décision est possible uniquement sur une demande au statut EN_ATTENTE (statut actuel : "
-                            + leaveRequest.getStatus() + ")");
+                    "Une décision n'est possible que sur une demande EN_ATTENTE");
         }
 
-        // Vérification de sécurité sur le solde pour chaque année concernée
-        int startYear = leaveRequest.getStartDate().getYear();
-        int endYear = leaveRequest.getEndDate().getYear();
-        for (int y = startYear; y <= endYear; y++) {
-            int daysForYear = BusinessDayCalculator.calculateBusinessDaysForYear(
-                    leaveRequest.getStartDate(), leaveRequest.getEndDate(), y);
-            if (daysForYear > 0) {
-                int remaining = leaveBalanceService.getRemainingBalance(
-                        leaveRequest.getEmployee().getId(), leaveRequest.getLeaveType().getId(), y);
-                if (daysForYear > remaining) {
-                    String yearSuffix = (startYear != endYear) ? " pour l'année " + y : "";
-                    throw new BusinessRuleException(
-                            "Impossible d'approuver : le solde disponible" + yearSuffix + " (" + remaining + " jours) est inférieur "
-                                    + "au nombre de jours demandés (" + daysForYear + " jours)");
-                }
+        // Revérification du solde à la validation
+        Long employeeId = lr.getEmployee().getId();
+        Long leaveTypeId = lr.getLeaveType().getId();
+        int startYear = lr.getStartDate().getYear();
+        int endYear = lr.getEndDate().getYear();
+
+        if (startYear == endYear) {
+            int remaining = leaveBalanceService.getRemainingBalance(employeeId, leaveTypeId, startYear);
+            if (lr.getBusinessDays() > remaining) {
+                lr.setStatus(LeaveStatus.REFUSEE);
+                lr.setComment("Solde insuffisant au moment de la validation");
+                leaveRequestRepository.save(lr);
+                throw new BusinessRuleException("Solde insuffisant : demande automatiquement refusée");
+            }
+        } else {
+            int daysInStartYear = BusinessDayCalculator.calculateBusinessDaysForYear(lr.getStartDate(), lr.getEndDate(), startYear);
+            int daysInEndYear = BusinessDayCalculator.calculateBusinessDaysForYear(lr.getStartDate(), lr.getEndDate(), endYear);
+            int remainingStart = leaveBalanceService.getRemainingBalance(employeeId, leaveTypeId, startYear);
+            int remainingEnd = leaveBalanceService.getRemainingBalance(employeeId, leaveTypeId, endYear);
+            if (daysInStartYear > remainingStart || daysInEndYear > remainingEnd) {
+                lr.setStatus(LeaveStatus.REFUSEE);
+                lr.setComment("Solde insuffisant au moment de la validation");
+                leaveRequestRepository.save(lr);
+                throw new BusinessRuleException("Solde insuffisant : demande automatiquement refusée");
             }
         }
 
-        leaveRequest.setStatus(LeaveStatus.APPROUVEE);
-        leaveRequest = leaveRequestRepository.save(leaveRequest);
-
-        log.info("Demande de congé id={} approuvée avec succès", requestId);
-        return leaveRequestMapper.toResponseDTO(leaveRequest);
+        lr.setStatus(LeaveStatus.APPROUVEE);
+        return leaveRequestMapper.toResponseDTO(leaveRequestRepository.save(lr));
     }
 
-    /**
-     * Refus d'une demande par le manager (US4).
-     * Règle : Possible uniquement sur une demande EN_ATTENTE, et commentaire obligatoire.
-     */
-    public LeaveRequestResponseDTO reject(Long requestId, LeaveDecisionDTO decisionDTO) {
-        log.info("Refus de la demande de congé id={}", requestId);
+    public LeaveRequestResponseDTO reject(Long leaveRequestId, LeaveDecisionDTO decision) {
+        LeaveRequest lr = leaveRequestRepository.findById(leaveRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Demande de congé", leaveRequestId));
 
-        LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Demande de congé avec l'id " + requestId + " introuvable"));
-
-        if (leaveRequest.getStatus() != LeaveStatus.EN_ATTENTE) {
+        if (lr.getStatus() != LeaveStatus.EN_ATTENTE) {
             throw new BusinessRuleException(
-                    "Une décision est possible uniquement sur une demande au statut EN_ATTENTE (statut actuel : "
-                            + leaveRequest.getStatus() + ")");
+                    "Une décision n'est possible que sur une demande EN_ATTENTE");
         }
 
-        // Règle : Un refus exige un commentaire
-        if (decisionDTO == null || decisionDTO.getComment() == null || decisionDTO.getComment().trim().isEmpty()) {
-            throw new BusinessRuleException(
-                    "Le refus d'une demande de congé exige obligatoirement un commentaire expliquant le motif.");
+        if (decision.getComment() == null || decision.getComment().isBlank()) {
+            throw new BusinessRuleException("Un refus exige obligatoirement un commentaire");
         }
 
-        leaveRequest.setStatus(LeaveStatus.REFUSEE);
-        leaveRequest.setComment(decisionDTO.getComment().trim());
-        leaveRequest = leaveRequestRepository.save(leaveRequest);
-
-        log.info("Demande de congé id={} refusée avec commentaire", requestId);
-        return leaveRequestMapper.toResponseDTO(leaveRequest);
+        lr.setStatus(LeaveStatus.REFUSEE);
+        lr.setComment(decision.getComment());
+        return leaveRequestMapper.toResponseDTO(leaveRequestRepository.save(lr));
     }
 
     @Transactional(readOnly = true)
-    public LeaveRequestResponseDTO findById(Long requestId) {
-        log.debug("Consultation de la demande de congé id={}", requestId);
-
-        LeaveRequest leaveRequest = leaveRequestRepository.findById(requestId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Demande de congé avec l'id " + requestId + " introuvable"));
-
-        return leaveRequestMapper.toResponseDTO(leaveRequest);
+    public LeaveRequestResponseDTO findById(Long id) {
+        return leaveRequestMapper.toResponseDTO(
+                leaveRequestRepository.findById(id)
+                        .orElseThrow(() -> new ResourceNotFoundException("Demande de congé", id)));
     }
 
     @Transactional(readOnly = true)
-    public List<LeaveRequestResponseDTO> getEmployeeLeaves(Long employeeId) {
-        log.debug("Listing des demandes de congé pour l'employé id={}", employeeId);
-
+    public List<LeaveRequestResponseDTO> getEmployeeLeaves(Long employeeId, LeaveStatus status) {
         if (!employeeRepository.existsById(employeeId)) {
-            throw new ResourceNotFoundException(
-                    "Employé avec l'id " + employeeId + " introuvable");
+            throw new ResourceNotFoundException("Employé", employeeId);
         }
-
-        return leaveRequestRepository.findByEmployeeIdOrderByStartDateDesc(employeeId).stream()
-                .map(leaveRequestMapper::toResponseDTO)
-                .collect(Collectors.toList());
+        List<LeaveRequest> results = (status != null)
+                ? leaveRequestRepository.findByEmployeeIdAndStatusOrderByStartDateDesc(employeeId, status)
+                : leaveRequestRepository.findByEmployeeIdOrderByStartDateDesc(employeeId);
+        return results.stream().map(leaveRequestMapper::toResponseDTO).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<LeaveRequestResponseDTO> getPendingRequestsForManager(Long managerId) {
-        log.debug("Listing des demandes en attente pour le manager id={}", managerId);
-
         if (!employeeRepository.existsById(managerId)) {
-            throw new ResourceNotFoundException(
-                    "Manager avec l'id " + managerId + " introuvable");
+            throw new ResourceNotFoundException("Manager", managerId);
         }
-
-        return leaveRequestRepository.findByEmployeeManagerIdAndStatus(managerId, LeaveStatus.EN_ATTENTE).stream()
-                .map(leaveRequestMapper::toResponseDTO)
-                .collect(Collectors.toList());
+        return leaveRequestRepository.findByEmployeeManagerIdAndStatus(managerId, LeaveStatus.EN_ATTENTE)
+                .stream().map(leaveRequestMapper::toResponseDTO).collect(Collectors.toList());
     }
 }

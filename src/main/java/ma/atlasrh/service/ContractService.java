@@ -90,11 +90,7 @@ public class ContractService {
         return contractMapper.toResponseDTO(contract);
     }
 
-    /**
-     * Termine un contrat en fixant sa date de fin.
-     * Si aujourd'hui est antérieur à la date de début,
-     * la date de fin est fixée à la date de début.
-     */
+    // Clôture le contrat à aujourd'hui (ou à sa date de début)
     public ContractResponseDTO terminate(Long contractId) {
         log.info("Terminaison du contrat id={}", contractId);
 

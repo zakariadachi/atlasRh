@@ -127,9 +127,10 @@ classDiagram
 
 ---
 
-## 4. Endpoints de l'API REST
+## 4. Endpoints de l'API REST & Exemples
 
-### Départements (`/api/departments`)
+### US1 — Départements (`/api/departments`)
+
 | Méthode | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/api/departments` | Créer un département |
@@ -138,17 +139,121 @@ classDiagram
 | `PUT` | `/api/departments/{id}` | Modifier un département |
 | `DELETE`| `/api/departments/{id}` | Supprimer un département (si vide) |
 
-### Employés (`/api/employees`)
+<details>
+<summary>📋 Exemples de requêtes / réponses</summary>
+
+**Créer un département** — `POST /api/departments`
+```json
+// Requête
+{
+  "name": "Informatique",
+  "description": "Équipe développement et infrastructure"
+}
+
+// Réponse 201
+{
+  "id": 1,
+  "name": "Informatique",
+  "description": "Équipe développement et infrastructure"
+}
+```
+
+**Erreur — nom déjà utilisé** — `409 Conflict`
+```json
+{
+  "status": 409,
+  "error": "Conflict",
+  "message": "Un département avec le nom 'Informatique' existe déjà",
+  "path": "/api/departments"
+}
+```
+
+**Erreur — département contenant des employés** — `409 Conflict` sur `DELETE`
+```json
+{
+  "status": 409,
+  "error": "Conflict",
+  "message": "Impossible de supprimer le département 'Informatique' car il contient des employés",
+  "path": "/api/departments/1"
+}
+```
+</details>
+
+---
+
+### US2 — Employés (`/api/employees`)
+
 | Méthode | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/api/employees` | Créer un employé |
-| `GET` | `/api/employees` | Recherche paginée (paramètres: `name`, `departmentId`, `page`, `size`, `sortBy`, `sortDir`) |
+| `GET` | `/api/employees` | Recherche paginée (`name`, `departmentId`, `page`, `size`, `sortBy`, `sortDir`) |
 | `GET` | `/api/employees/{id}` | Consulter un employé par ID |
 | `PUT` | `/api/employees/{id}` | Modifier un employé |
 | `DELETE`| `/api/employees/{id}` | Supprimer un employé selon règles métier |
 | `GET` | `/api/employees/{id}/team` | Consulter l'équipe d'un manager |
 
-### Contrats (`/api`)
+<details>
+<summary>📋 Exemples de requêtes / réponses</summary>
+
+**Créer un employé** — `POST /api/employees`
+```json
+// Requête
+{
+  "matricule": "ATL-042",
+  "firstName": "Youssef",
+  "lastName": "El Amrani",
+  "email": "y.elamrani@atlasrh.ma",
+  "position": "Développeur Java",
+  "hireDate": "2024-03-01",
+  "departmentId": 1,
+  "managerId": 3
+}
+
+// Réponse 201
+{
+  "id": 42,
+  "matricule": "ATL-042",
+  "firstName": "Youssef",
+  "lastName": "El Amrani",
+  "email": "y.elamrani@atlasrh.ma",
+  "position": "Développeur Java",
+  "hireDate": "2024-03-01",
+  "departmentId": 1,
+  "departmentName": "Informatique",
+  "managerId": 3,
+  "managerFullName": "Karim Bensouda"
+}
+```
+
+**Recherche paginée** — `GET /api/employees?name=youssef&departmentId=1&page=0&size=10&sortBy=lastName&sortDir=asc`
+```json
+// Réponse 200
+{
+  "content": [ { "id": 42, "firstName": "Youssef", "lastName": "El Amrani", "..." : "..." } ],
+  "page": 0,
+  "size": 10,
+  "totalElements": 1,
+  "totalPages": 1,
+  "first": true,
+  "last": true
+}
+```
+
+**Erreur — employé son propre manager** — `400 Bad Request` sur `PUT`
+```json
+{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Un employé ne peut pas être son propre manager",
+  "path": "/api/employees/42"
+}
+```
+</details>
+
+---
+
+### US3 — Contrats (`/api`)
+
 | Méthode | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/api/employees/{employeeId}/contracts` | Créer un contrat pour un employé |
@@ -159,22 +264,256 @@ classDiagram
 | `PATCH` | `/api/contracts/{id}/terminate` | Terminer un contrat en cours |
 | `DELETE`| `/api/contracts/{id}` | Supprimer un contrat selon règles métier |
 
-### Types de Congés & Soldes (`/api`)
-| Méthode | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/leave-types` | Lister les types de congés disponibles |
-| `GET` | `/api/employees/{employeeId}/leave-balance` | Consulter le solde de congés (paramètre optionnel: `year`) |
+<details>
+<summary>📋 Exemples de requêtes / réponses</summary>
 
-### Demandes de Congé (`/api`)
+**Créer un contrat CDI** — `POST /api/employees/42/contracts`
+```json
+// Requête
+{
+  "type": "CDI",
+  "startDate": "2024-03-01",
+  "grossSalary": 8500.00
+}
+
+// Réponse 201
+{
+  "id": 15,
+  "employeeId": 42,
+  "type": "CDI",
+  "startDate": "2024-03-01",
+  "endDate": null,
+  "grossSalary": 8500.00
+}
+```
+
+**Créer un contrat CDD** — `POST /api/employees/42/contracts`
+```json
+// Requête
+{
+  "type": "CDD",
+  "startDate": "2024-01-01",
+  "endDate": "2024-12-31",
+  "grossSalary": 6000.00
+}
+```
+
+**Erreur — CDD sans date de fin** — `400 Bad Request`
+```json
+{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Un contrat de type CDD doit obligatoirement avoir une date de fin",
+  "path": "/api/employees/42/contracts"
+}
+```
+
+**Erreur — chevauchement de contrats** — `409 Conflict`
+```json
+{
+  "status": 409,
+  "error": "Conflict",
+  "message": "L'employé possède déjà un contrat qui chevauche la période demandée. Un employé ne peut avoir qu'un seul contrat actif à la fois.",
+  "path": "/api/employees/42/contracts"
+}
+```
+
+**Terminer un contrat** — `PATCH /api/contracts/15/terminate`
+```json
+// Réponse 200
+{
+  "id": 15,
+  "employeeId": 42,
+  "type": "CDI",
+  "startDate": "2024-03-01",
+  "endDate": "2026-11-09",
+  "grossSalary": 8500.00
+}
+```
+</details>
+
+---
+
+### US4 — Validation des congés (Manager)
+
 | Méthode | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/api/employees/{employeeId}/leave-requests` | Déposer une demande de congé (US5) |
-| `GET` | `/api/employees/{employeeId}/leave-requests` | Lister les demandes d'un employé |
-| `GET` | `/api/leave-requests/{id}` | Consulter une demande de congé |
-| `PATCH` | `/api/employees/{employeeId}/leave-requests/{id}/cancel` | Annuler sa demande de congé (US5) |
-| `GET` | `/api/managers/{managerId}/leave-requests/pending` | Demandes en attente pour le manager (US4) |
-| `PATCH` | `/api/leave-requests/{id}/approve` | Approuver une demande de congé (US4) |
-| `PATCH` | `/api/leave-requests/{id}/reject` | Refuser une demande avec commentaire obligatoire (US4) |
+| `GET` | `/api/managers/{managerId}/leave-requests/pending` | Demandes EN_ATTENTE de l'équipe |
+| `PATCH` | `/api/leave-requests/{id}/approve` | Approuver une demande |
+| `PATCH` | `/api/leave-requests/{id}/reject` | Refuser avec commentaire obligatoire |
+
+<details>
+<summary>📋 Exemples de requêtes / réponses</summary>
+
+**Lister les demandes en attente** — `GET /api/managers/3/leave-requests/pending`
+```json
+// Réponse 200
+[
+  {
+    "id": 7,
+    "employeeId": 42,
+    "employeeFullName": "Youssef El Amrani",
+    "leaveTypeName": "Annuel",
+    "startDate": "2026-12-22",
+    "endDate": "2026-12-31",
+    "businessDays": 8,
+    "reason": "Vacances de fin d'année",
+    "status": "EN_ATTENTE",
+    "comment": null
+  }
+]
+```
+
+**Approuver une demande** — `PATCH /api/leave-requests/7/approve`
+```json
+// Réponse 200
+{
+  "id": 7,
+  "status": "APPROUVEE",
+  "comment": null,
+  "..."  : "..."
+}
+```
+
+**Refuser une demande** — `PATCH /api/leave-requests/7/reject`
+```json
+// Requête (commentaire obligatoire)
+{
+  "comment": "Période critique pour le projet, refus nécessaire"
+}
+
+// Réponse 200
+{
+  "id": 7,
+  "status": "REFUSEE",
+  "comment": "Période critique pour le projet, refus nécessaire",
+  "..." : "..."
+}
+```
+
+**Erreur — refus sans commentaire** — `400 Bad Request`
+```json
+{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Un refus exige obligatoirement un commentaire",
+  "path": "/api/leave-requests/7/reject"
+}
+```
+</details>
+
+---
+
+### US5 — Demandes de congé (Employé)
+
+| Méthode | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/employees/{employeeId}/leave-requests` | Déposer une demande de congé |
+| `GET` | `/api/employees/{employeeId}/leave-requests` | Lister ses demandes (filtre: `status`) |
+| `GET` | `/api/leave-requests/{id}` | Consulter une demande |
+| `PATCH` | `/api/employees/{employeeId}/leave-requests/{id}/cancel` | Annuler une demande EN_ATTENTE |
+
+<details>
+<summary>📋 Exemples de requêtes / réponses</summary>
+
+**Déposer une demande** — `POST /api/employees/42/leave-requests`
+```json
+// Requête
+{
+  "leaveTypeId": 1,
+  "startDate": "2026-12-22",
+  "endDate": "2026-12-31",
+  "reason": "Vacances de fin d'année"
+}
+
+// Réponse 201
+{
+  "id": 7,
+  "employeeId": 42,
+  "employeeFullName": "Youssef El Amrani",
+  "leaveTypeId": 1,
+  "leaveTypeName": "Annuel",
+  "startDate": "2026-12-22",
+  "endDate": "2026-12-31",
+  "businessDays": 8,
+  "reason": "Vacances de fin d'année",
+  "status": "EN_ATTENTE",
+  "comment": null
+}
+```
+
+**Lister avec filtre** — `GET /api/employees/42/leave-requests?status=EN_ATTENTE`
+
+**Annuler une demande** — `PATCH /api/employees/42/leave-requests/7/cancel`
+```json
+// Réponse 200
+{
+  "id": 7,
+  "status": "ANNULEE",
+  "..." : "..."
+}
+```
+
+**Erreur — solde insuffisant** — `400 Bad Request`
+```json
+{
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Solde insuffisant pour 2026 : 5 jour(s) disponible(s), 8 demandé(s)",
+  "path": "/api/employees/42/leave-requests"
+}
+```
+
+**Erreur — chevauchement** — `409 Conflict`
+```json
+{
+  "status": 409,
+  "error": "Conflict",
+  "message": "Cette demande chevauche une demande existante",
+  "path": "/api/employees/42/leave-requests"
+}
+```
+</details>
+
+---
+
+### US6 — Solde de congés (Employé)
+
+| Méthode | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/employees/{employeeId}/leave-balance` | Solde restant par type + ancienneté |
+| `GET` | `/api/leave-types` | Lister les types de congés disponibles |
+
+<details>
+<summary>📋 Exemples de requêtes / réponses</summary>
+
+**Consulter le solde** — `GET /api/employees/42/leave-balance?year=2026`
+```json
+// Réponse 200
+{
+  "employeeId": 42,
+  "employeeFullName": "Youssef El Amrani",
+  "year": 2026,
+  "seniority": "2 an(s) et 8 mois",
+  "balances": [
+    {
+      "leaveTypeId": 1,
+      "leaveTypeName": "Annuel",
+      "daysPerYear": 22,
+      "usedDays": 17,
+      "remainingDays": 5
+    },
+    {
+      "leaveTypeId": 2,
+      "leaveTypeName": "Exceptionnel",
+      "daysPerYear": 10,
+      "usedDays": 0,
+      "remainingDays": 10
+    }
+  ]
+}
+```
+</details>
 
 ---
 
@@ -201,9 +540,4 @@ classDiagram
 3. Accéder à l'interface Swagger UI :
    ```
    http://localhost:8080/swagger-ui.html
-   ```
-
-4. Exécuter la suite complète des tests :
-   ```bash
-   mvn test
    ```

@@ -12,29 +12,18 @@ import java.util.List;
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
 
-    /**
-     * Récupère l'historique des contrats d'un employé, triés par date de début décroissante.
-     */
+    // Historique des contrats d'un employé (plus récent au plus ancien)
     List<Contract> findByEmployeeIdOrderByStartDateDesc(Long employeeId);
 
-    /**
-     * Vérifie si un employé a un contrat en cours (actif) à une date donnée.
-     * Un contrat est en cours si :
-     * - sa date de début est <= à la date donnée
-     * - sa date de fin est null OU >= à la date donnée
-     */
+    boolean existsByEmployeeId(Long employeeId);
+
+    // Vérifie si un contrat est actif à une date donnée
     @Query("SELECT COUNT(c) > 0 FROM Contract c WHERE c.employee.id = :employeeId " +
            "AND c.startDate <= :date " +
            "AND (c.endDate IS NULL OR c.endDate >= :date)")
     boolean hasActiveContract(@Param("employeeId") Long employeeId, @Param("date") LocalDate date);
 
-    boolean existsByEmployeeId(Long employeeId);
-
-    /**
-     * Vérifie s'il y a un chevauchement avec un contrat existant pour un employé.
-     * Un nouveau contrat [newStart, newEnd] chevauche un contrat existant [startDate, endDate] si :
-     * - newStart <= endDate (ou endDate est null) ET newEnd >= startDate (ou newEnd est null)
-     */
+    // Vérifie les chevauchements de dates pour un employé
     @Query("SELECT COUNT(c) > 0 FROM Contract c WHERE c.employee.id = :employeeId " +
            "AND c.startDate <= COALESCE(:newEnd, CAST('9999-12-31' AS localdate)) " +
            "AND (c.endDate IS NULL OR c.endDate >= :newStart)")
@@ -42,9 +31,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
                                     @Param("newStart") LocalDate newStart,
                                     @Param("newEnd") LocalDate newEnd);
 
-    /**
-     * Vérifie s'il y a un chevauchement en excluant un contrat donné (pour la mise à jour).
-     */
+    // Vérifie les chevauchements en ignorant un contrat précis (pour mise à jour)
     @Query("SELECT COUNT(c) > 0 FROM Contract c WHERE c.employee.id = :employeeId " +
            "AND c.id != :contractId " +
            "AND c.startDate <= COALESCE(:newEnd, CAST('9999-12-31' AS localdate)) " +

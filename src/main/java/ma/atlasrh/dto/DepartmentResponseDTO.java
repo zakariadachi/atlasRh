@@ -1,8 +1,6 @@
 package ma.atlasrh.dto;
 
-/**
- * DTO de réponse pour un département.
- */
+// DTO de réponse pour un département
 public class DepartmentResponseDTO {
 
     private Long id;
