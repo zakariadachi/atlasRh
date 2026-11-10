@@ -11,5 +11,6 @@
     <include file="db/changelog/changes/004-insert-demo-data.xml"/>
     <include file="db/changelog/changes/005-create-leave-types.xml"/>
     <include file="db/changelog/changes/006-create-leave-requests.xml"/>
+    <include file="db/changelog/changes/007-insert-leave-demo-data.xml"/>
 
 </databaseChangeLog>
