@@ -7,9 +7,8 @@
 
     <changeSet id="007-insert-leave-demo-data" author="atlasrh" context="!test">
 
-        <!-- Karim Bennani (id=1) : 5 jours annuels approuvés en juin 2026 -->
+        <!-- Karim Bennani : 5 jours annuels approuvés en juin 2026 -->
         <insert tableName="leave_requests">
-            <column name="id" valueNumeric="1"/>
             <column name="employee_id" valueNumeric="1"/>
             <column name="leave_type_id" valueNumeric="1"/>
             <column name="start_date" valueDate="2026-06-02"/>
@@ -20,9 +19,8 @@
             <column name="created_at" valueDate="2026-05-15"/>
         </insert>
 
-        <!-- Fatima El Amrani (id=2) : 3 jours exceptionnels approuvés -->
+        <!-- Fatima El Amrani : 3 jours exceptionnels approuvés -->
         <insert tableName="leave_requests">
-            <column name="id" valueNumeric="2"/>
             <column name="employee_id" valueNumeric="2"/>
             <column name="leave_type_id" valueNumeric="2"/>
             <column name="start_date" valueDate="2026-03-10"/>
@@ -33,9 +31,8 @@
             <column name="created_at" valueDate="2026-03-01"/>
         </insert>
 
-        <!-- Youssef Tazi (id=3) : 10 jours annuels approuvés en août 2026 -->
+        <!-- Youssef Tazi : 10 jours annuels approuvés en août 2026 -->
         <insert tableName="leave_requests">
-            <column name="id" valueNumeric="3"/>
             <column name="employee_id" valueNumeric="3"/>
             <column name="leave_type_id" valueNumeric="1"/>
             <column name="start_date" valueDate="2026-08-03"/>
@@ -46,9 +43,8 @@
             <column name="created_at" valueDate="2026-07-01"/>
         </insert>
 
-        <!-- Salma Idrissi (id=4) : demande en attente -->
+        <!-- Salma Idrissi : demande en attente -->
         <insert tableName="leave_requests">
-            <column name="id" valueNumeric="4"/>
             <column name="employee_id" valueNumeric="4"/>
             <column name="leave_type_id" valueNumeric="1"/>
             <column name="start_date" valueDate="2026-12-22"/>
@@ -59,9 +55,8 @@
             <column name="created_at" valueDate="2026-11-01"/>
         </insert>
 
-        <!-- Mehdi Alaoui (id=5) : demande refusée avec commentaire -->
+        <!-- Mehdi Alaoui : demande refusée avec commentaire -->
         <insert tableName="leave_requests">
-            <column name="id" valueNumeric="5"/>
             <column name="employee_id" valueNumeric="5"/>
             <column name="leave_type_id" valueNumeric="1"/>
             <column name="start_date" valueDate="2026-07-14"/>
@@ -73,9 +68,8 @@
             <column name="created_at" valueDate="2026-07-01"/>
         </insert>
 
-        <!-- Mehdi Alaoui (id=5) : demande approuvée en septembre 2026 -->
+        <!-- Mehdi Alaoui : demande approuvée en septembre 2026 -->
         <insert tableName="leave_requests">
-            <column name="id" valueNumeric="6"/>
             <column name="employee_id" valueNumeric="5"/>
             <column name="leave_type_id" valueNumeric="1"/>
             <column name="start_date" valueDate="2026-09-07"/>
@@ -86,9 +80,8 @@
             <column name="created_at" valueDate="2026-08-20"/>
         </insert>
 
-        <!-- Nadia Berrada (id=6) : demande annulée -->
+        <!-- Nadia Berrada : demande annulée -->
         <insert tableName="leave_requests">
-            <column name="id" valueNumeric="7"/>
             <column name="employee_id" valueNumeric="6"/>
             <column name="leave_type_id" valueNumeric="2"/>
             <column name="start_date" valueDate="2026-04-07"/>
@@ -99,9 +92,8 @@
             <column name="created_at" valueDate="2026-03-25"/>
         </insert>
 
-        <!-- Omar Fassi (id=7) : demande en attente -->
+        <!-- Omar Fassi : demande en attente -->
         <insert tableName="leave_requests">
-            <column name="id" valueNumeric="8"/>
             <column name="employee_id" valueNumeric="7"/>
             <column name="leave_type_id" valueNumeric="1"/>
             <column name="start_date" valueDate="2026-11-02"/>
@@ -111,8 +103,6 @@
             <column name="status" value="EN_ATTENTE"/>
             <column name="created_at" valueDate="2026-10-15"/>
         </insert>
-
-        <sql>SELECT setval('leave_requests_id_seq', (SELECT MAX(id) FROM leave_requests));</sql>
 
     </changeSet>
 

@@ -93,7 +93,7 @@ public class EmployeeService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Employé avec l'id " + id + " introuvable"));
 
-        // Vérification unicité de l'email (exclure l'employé courant)
+        // Vérification unicité de l'email
         if (employeeRepository.existsByEmailAndIdNot(dto.getEmail(), id)) {
             throw new ConflictException(
                     "L'email '" + dto.getEmail() + "' est déjà utilisé");
